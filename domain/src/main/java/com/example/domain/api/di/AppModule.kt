@@ -1,7 +1,6 @@
 package com.example.domain.api.di
 
 import android.app.Application
-import android.content.Context
 import com.example.domain.api.ConnectivityInterceptorImpl
 import com.example.domain.api.repository.CountryService
 import dagger.Module
