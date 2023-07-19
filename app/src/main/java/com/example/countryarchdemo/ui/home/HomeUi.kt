@@ -1,6 +1,6 @@
 package com.example.countryarchdemo.ui.home
 
-import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -9,26 +9,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.countryarchdemo.CountryData
 import com.example.countryarchdemo.HomeUiState
 import com.example.countryarchdemo.MainViewModel
-import com.example.countryarchdemo.R
+import com.example.countryarchdemo.School
 import com.example.countryarchdemo.navigation.NavRoutes
 import com.example.countryarchdemo.ui.ErrorDialog
-import com.example.countryarchdemo.ui.LabeledText
 import com.example.countryarchdemo.ui.TopBar
-import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -38,36 +34,34 @@ fun Home(
     scrollState: LazyListState,
     coroutineScope: CoroutineScope,
     navController: NavHostController,
-    country: Array<String>,
 ) {
     Scaffold(
         topBar = { TopBar() },
     ) {
-        when (val state = viewModel.uiState.collectAsState(HomeUiState.Choosing<Unit>()).value) {
-            is HomeUiState.Choosing<*> -> {
-                DisplayCountryList(paddingValues = it, viewModel, scrollState, coroutineScope, country)
+        when (val state = viewModel.uiState.collectAsState().value) {
+            is HomeUiState.Choosing -> {
+                DisplaySchoolList(paddingValues = it, viewModel, scrollState, coroutineScope,
+                    state.data
+                )
             }
-            is HomeUiState.CountryDataLoaded<*> -> {
-                DisposableEffect(viewModel.uiState) {
-                    val countryData = state.data
-                    val data = Uri.encode(Gson().toJson(countryData))
-                    navController.navigate(NavRoutes.Detail.createRoute(data)) {
+            is HomeUiState.DataLoaded -> {
+                DisposableEffect(state.data) {
+                    val school = state.data
+                    navController.navigate(NavRoutes.Detail.createRoute(school)) {
                         popUpTo(NavRoutes.Home.route)
                     }
                     onDispose {
                         viewModel.scrollPosition = scrollState.firstVisibleItemIndex
                         viewModel.offset = scrollState.firstVisibleItemScrollOffset
-                        viewModel.reset()
                     }
                 }
-
             }
-            is HomeUiState.Error<*> -> {
-                ErrorDialog(message = state.error.toString()) {
+            is HomeUiState.Error -> {
+                ErrorDialog(message = state.error) {
                     viewModel.reset()
                 }
             }
-            is HomeUiState.Loading<*> -> {
+            is HomeUiState.Loading -> {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -77,18 +71,18 @@ fun Home(
                 }
             }
         }
-
     }
 }
 
+
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun DisplayCountryList(
+fun DisplaySchoolList(
     paddingValues: PaddingValues,
     viewModel: MainViewModel,
     scrollState: LazyListState,
     coroutineScope: CoroutineScope,
-    country: Array<String>
+    school: List<School>
 ) {
 
     LazyColumn(modifier = Modifier
@@ -104,7 +98,7 @@ fun DisplayCountryList(
 
         }
 
-        items(items = country, itemContent = { name ->
+        items(items = school, itemContent = { name ->
             Row(modifier = Modifier.fillParentMaxWidth()) {
                 Card(
                     shape = RoundedCornerShape(4.dp),
@@ -112,10 +106,10 @@ fun DisplayCountryList(
                     modifier = Modifier
                         .fillParentMaxWidth()
                         .padding(16.dp),
-                    onClick = { viewModel.getDetails(name) }
+                    onClick = { viewModel.onClick(name.id)}
                 ) {
                     Text(
-                        name, style = TextStyle(
+                        name.schoolName, style = TextStyle(
                             color = Color.Black,
                             fontSize = 20.sp,
                             textAlign = TextAlign.Center
@@ -128,52 +122,39 @@ fun DisplayCountryList(
 }
 
 @Composable
-fun Detail(data: CountryData) {
+fun Detail(dataId: String, viewModel: MainViewModel, navController: NavHostController) {
+    val satDetails = viewModel.satDetails.value
+    LaunchedEffect(dataId) {
+        viewModel.fetchDetails(dataId)
+    }
+
+    // Register a callback to the back button press
+    BackHandler {
+        // Navigate back to the Home screen
+        viewModel.reset()
+        navController.popBackStack()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.padding(16.dp))
-        Text(
-            data.countryName ?: stringResource(id = R.string.unknown),
-            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 44.sp),
-            modifier = Modifier
-                .padding(40.dp)
-                .fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Spacer(modifier = Modifier.padding(10.dp))
-            LabeledText(
-                stringResource(id = R.string.capital_label),
-                data.capital ?: stringResource(id = R.string.unknown),
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-            LabeledText(
-                stringResource(id = R.string.population_label),
-                data.population ?: stringResource(id = R.string.unknown),
-            )
-            LabeledText(
-                stringResource(id = R.string.area_label),
-                data.area ?: stringResource(id = R.string.unknown),
-            )
-            LabeledText(
-                stringResource(id = R.string.region_label),
-                data.region ?: stringResource(id = R.string.unknown),
-            )
-            LabeledText(
-                stringResource(id = R.string.sub_region_label),
-                data.subRegion ?: stringResource(id = R.string.unknown),
-            )
-
+            Text(text = "Name: ${satDetails?.schoolName ?: "Error Not Found"}", style = MaterialTheme.typography.h5)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Math Score: ${satDetails?.satMathAvgScore ?: "Error Not Found"}", style = MaterialTheme.typography.h5)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Writing Score: ${satDetails?.satWritingAvgScore ?: "Error Not Found"}", style = MaterialTheme.typography.h5)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Reading Score: ${satDetails?.satCriticalReadingAvgScore ?: "Error Not Found"}", style = MaterialTheme.typography.h5)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Number of Test Takers: ${satDetails?.numOfSatTestTakers ?: "Error Not Found"}", style = MaterialTheme.typography.h5)
         }
     }
-
 }

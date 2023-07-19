@@ -2,7 +2,7 @@ package com.example.domain.api.di
 
 import android.app.Application
 import com.example.domain.api.ConnectivityInterceptorImpl
-import com.example.domain.api.repository.CountryService
+import com.example.domain.api.repository.SchoolsService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,16 +15,16 @@ import java.util.concurrent.TimeUnit
 
 @Module
 @InstallIn(SingletonComponent::class)
-class AppModule {
+class DataModule {
 
     @Provides
-    fun provideRetrofit(connectivityInterceptorImpl: ConnectivityInterceptorImpl): CountryService =
+    fun provideRetrofit(connectivityInterceptorImpl: ConnectivityInterceptorImpl): SchoolsService =
         Retrofit.Builder()
             .client(okHttpClient(connectivityInterceptorImpl))
             .baseUrl(BASE_URL)
-            .addConverterFactory(MoshiConverterFactory.create().asLenient())
+            .addConverterFactory(MoshiConverterFactory.create())
             .build()
-            .create(CountryService::class.java)
+            .create(SchoolsService::class.java)
 
     @Provides
     fun providesConnectivityInterceptorImpl(application: Application):
@@ -47,6 +47,6 @@ class AppModule {
 
     companion object {
         const val NETWORK_REQUEST_TIMEOUT_SECONDS = 15L
-        const val BASE_URL = "https://restcountries.com/"
+        const val BASE_URL = "https://data.cityofnewyork.us/resource/"
     }
 }

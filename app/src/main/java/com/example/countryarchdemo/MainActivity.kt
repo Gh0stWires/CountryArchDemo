@@ -9,13 +9,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.example.countryarchdemo.navigation.CountryDataType
 import com.example.countryarchdemo.navigation.NavRoutes
 import com.example.countryarchdemo.ui.home.Detail
 import com.example.countryarchdemo.ui.home.Home
@@ -51,24 +48,24 @@ fun MainScreen() {
 
     NavHost(navController = navController, startDestination = NavRoutes.Home.route) {
         composable(NavRoutes.Home.route) {
-            Home(viewModel, scrollState, coroutineScope, navController, stringArrayResource(id = R.array.countries_array))
+
+            Home(viewModel, scrollState, coroutineScope, navController)
         }
-        composable(
-            NavRoutes.Detail.route,
-            arguments = listOf(navArgument("data") { type = CountryDataType() })
-        ) {
-            val data = it.arguments?.getParcelable<CountryData>("data")
-            if (data != null) {
-                Detail(data = data)
+        composable(NavRoutes.Detail.route) { navBackStackEntry ->
+            val dataId = navBackStackEntry.arguments?.getString("data")
+            if (dataId != null) {
+                Detail(dataId = dataId, viewModel, navController)
             }
+
         }
+
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
     CountryArchDemoTheme {
-        Detail(data = CountryData("unknown", "unknown", "unknown", "unknown", "unknown", "unknown",))
     }
 }
